@@ -1,0 +1,9 @@
+{
+    "python.linting.enabled": true,
+    "python.linting.pylintEnabled": false,
+    "python.linting.ruffEnabled": true,
+    "python.linting.ruffArgs": [
+        "--fix"
+    ],
+    "editor.formatOnSave": true
+}
