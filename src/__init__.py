@@ -1,1 +1,1 @@
-# allows the scripts in under src to be indexed directly by identifying src (the directory) as a package
+# This file makes 'src' a Python package.

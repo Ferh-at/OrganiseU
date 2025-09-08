@@ -1,23 +1,12 @@
-import tkinter as tk
+import customtkinter
+from gui import MainWindow
+#?from core import Auth
+#? from database import DatabaseManager
 
 
 def main():
-    root = tk.Tk()
-    root.title("My Tkinter App")
-    root.geometry("400x300")
+    app = customtkinter.CTk()
+    app.title("OrganiseU")
+    app.geometry("750x750")
 
-    label = tk.Label(root, text="Hello, Tkinter!")
-    label.pack(pady=20)
-
-    button = tk.Button(
-        root, text="Click Me", command=lambda: label.config(text="Button Clicked!")
-    )
-    button.pack()
-
-    root.mainloop()
-
-
-if __name__ == "__main__":
-    main()
-
-print("test")
+    

@@ -1,1 +1,1 @@
-# allows the scripts under gui to be indexed directly by identifying gui (the directory) as a package
+# This file makes 'gui' a Python package.
