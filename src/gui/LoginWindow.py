@@ -1,11 +1,13 @@
 import customtkinter
 from PIL import Image
+from core.Auth import Auth
 
 class LoginWindow(customtkinter.CTkFrame):
     def __init__(self, parent):
         super().__init__(parent)
 
         self.parent = parent
+        self.auth = Auth()
 
         try:
             BackgroundImagePIL = Image.open("assets/BackgroundNormal.png")
@@ -24,9 +26,9 @@ class LoginWindow(customtkinter.CTkFrame):
             self.configure(fg_color="#1A7FD2")
             self.BGImage = None
 
-        self.UsernamEntry = customtkinter.CTkEntry(
+        self.UsernameEntry = customtkinter.CTkEntry(
             master=self,
-            placeholder_text="Username",
+            placeholder_text="Enter a username",
             width=300,
             height=45,
             corner_radius=20,
@@ -36,12 +38,12 @@ class LoginWindow(customtkinter.CTkFrame):
             text_color="black",
             placeholder_text_color="gray50"
         )
-        self.UsernamEntry.place(relx=0.5, rely=0.4, anchor="center")
+        self.UsernameEntry.place(relx=0.5, rely=0.4, anchor="center")
 
         # --- PasswordEntry Entry ---
         self.PasswordEntry = customtkinter.CTkEntry(
             master=self,
-            placeholder_text="PasswordEntry",
+            placeholder_text="Enter a password",
             width=300,
             height=45,
             corner_radius=20,
@@ -78,7 +80,7 @@ class LoginWindow(customtkinter.CTkFrame):
             height=40,
             command=self.AttemptLogin
         )
-        self.RegisterButton.place(relx=0.5, rely=0.75, anchor="center")
+        self.RegisterButton.place(relx=0.5, rely=0.7, anchor="center")
 
     def AttemptLogin(self):
         username = self. UsernamEntry.get()
