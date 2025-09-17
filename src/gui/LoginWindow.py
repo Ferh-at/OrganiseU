@@ -1,6 +1,6 @@
 import customtkinter
 from PIL import Image
-from core.Auth import Auth
+from core.Auth import Auth, UserExistsError, InvalidCredentialsError, WeakPasswordError
 
 class LoginWindow(customtkinter.CTkFrame):
     def __init__(self, parent):
@@ -78,14 +78,47 @@ class LoginWindow(customtkinter.CTkFrame):
             corner_radius=20,
             width=200,
             height=40,
-            command=self.AttemptLogin
+            command=self.AttemptRegistration
         )
         self.RegisterButton.place(relx=0.5, rely=0.7, anchor="center")
 
+        self.FeedbackLabel = customtkinter.CTkLabel(
+            master=self,
+            text="",
+            text_color="red",
+            font=("Montserrat", 16),
+        )
+        self.FeedbackLabel.place(relx=0.5, rely=0.3, anchor="center")
+
     def AttemptLogin(self):
-        username = self. UsernamEntry.get()
-        PasswordEntry = self.PasswordEntry.get()
-        print(f"Username: {username}, PasswordEntry: {PasswordEntry}")
+        username = self.UsernameEntry.get().strip()
+        password = self.PasswordEntry.get().strip()
+
+        try:
+            if self.auth.LoginUser(username, password):
+                self.FeedbackLabel.configure(text="Login Successful", text_color="green")
+                # transition to the main window with tasks, habits etc. here
+        except InvalidCredentialsError:
+            self.FeedbackLabel.configure(text="Invalid username or password", text_color="red")
+        except Exception as e:
+            self.FeedbackLabel.configure(text=f"Unexpected error, {str(e)}", text_color="red")
+
+    def AttemptRegistration(self):
+        #! OR GO DIRECTLY TO ANOTHER SCREEN
+        username = self.UsernameEntry.get().strip()
+        password = self.PasswordEntry.get().strip()
+
+        try:
+            if self.auth.RegisterUser(username, password):
+                self.FeedbackLabel.configure(text="Registration Successful", text_color="green")
+                #! TRANSITION TO ONBOARDING PROCESS
+        except UserExistsError:
+            self.FeedbackLabel.configure(text="Username is already taken!", text_color="red")
+        except WeakPasswordError:
+            self.FeedbackLabel.configure(text="Password must be between 8-15 alphanumeric characters and include a symbol!", text_color="red")
+        except Exception:
+            self.FeedbackLabel.configure(text="Unexpected error, {str(Exception)}", text_color="red")
+
 
     def FadeOut(self, step=0.05):
         alpha = self.parent.attributes("-alpha")

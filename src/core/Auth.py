@@ -119,7 +119,7 @@ class Auth:
                         "UPDATE users SET failed_attempts = 0, lockout_until = ? WHERE username = ?",
                         (lockout_until.isoformat(), username),
                     )
-                    self._log_action(username, "Account locked")
+                    self._LogAction(username, "Account locked")
                 else:
                     cursor.execute(
                         "UPDATE users SET failed_attempts = ? WHERE username = ?",
