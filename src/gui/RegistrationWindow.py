@@ -1,6 +1,6 @@
 import customtkinter
 from PIL import Image
-from core.Auth import Auth, UserExistsError, InvalidCredentialsError, WeakPasswordError
+from core.Auth import Auth
 from gui.MainMenuWindow import MainMenu
 
 
@@ -8,6 +8,7 @@ class RegistrationWindow(customtkinter.CTkFrame):
     def __init__(self, parent):
         super().__init__(parent)
         self.parent = parent
+
 
         try:
             BackgroundImagePIL = Image.open("assets/BackgroundNormal.png")
@@ -25,7 +26,112 @@ class RegistrationWindow(customtkinter.CTkFrame):
             print(f"Error loading background image: {e}")
             self.configure(fg_color="#D2951A")
             self.BGImage = None
+
+        self.UsernameEntry = customtkinter.CTkEntry(
+            master=self,
+            placeholder_text="Enter a username",
+            width=300,
+            height=45,
+            fg_color="#BEF8FF",
+            border_color="#5EE2F1",
+            border_width=2,
+            text_color="black",
+            placeholder_text_color="gray50"
+        )
+        self.UsernameEntry.place(relx=0.5, rely=0.15, anchor="center")
+
+        self.PasswordEntry = customtkinter.CTkEntry(
+            master=self,
+            placeholder_text="Enter a password",
+            width=300,
+            height=45,
+            fg_color="#BEF8FF",
+            border_color="#5EE2F1",
+            border_width=2,
+            text_color="black",
+            placeholder_text_color="gray50",
+            show="*"
+        )
+        self.PasswordEntry.place(relx=0.5, rely=0.23, anchor="center")
+
+        self.ConfirmPasswordEntry = customtkinter.CTkEntry(
+            master=self,
+            placeholder_text="Confirm password",
+            width=300,
+            height=45,
+            fg_color="#BEF8FF",
+            border_color="#5EE2F1",
+            border_width=2,
+            text_color="black",
+            placeholder_text_color="gray50",
+            show="*"
+        )
+        self.ConfirmPasswordEntry.place(relx=0.5, rely=0.31, anchor="center")
+
+        self.ConcentrationLabel = customtkinter.CTkLabel(
+            self, text="Average Concentration", text_color="black"
+        )
+        self.ConcentrationLabel.place(relx=0.3, rely=0.42, anchor="e")
+
+        self.ConcentrationSlider = customtkinter.CTkSlider(
+            self, from_=1, to=10, number_of_steps=9, width=200,
+            fg_color="#BEF8FF", progress_color="#5EE2F1", button_color="#3CC1D4", button_hover_color="#2BA0B4"
+        )
+        self.ConcentrationSlider.set(5)
+        self.ConcentrationSlider.place(relx=0.35, rely=0.42, anchor="w")
+
+
+        self.DisciplineLabel = customtkinter.CTkLabel(
+            self, text="Average Discipline", text_color="black"
+        )
+        self.DisciplineLabel.place(relx=0.3, rely=0.50, anchor="e")
+
+        self.DisciplineSlider = customtkinter.CTkSlider(
+            self, from_=1, to=10, number_of_steps=9, width=200,
+            fg_color="#BEF8FF", progress_color="#5EE2F1", button_color="#3CC1D4", button_hover_color="#2BA0B4"
+        )
+        self.DisciplineSlider.set(5)
+        self.DisciplineSlider.place(relx=0.35, rely=0.50, anchor="w")
+
+        self.MotivationLabel = customtkinter.CTkLabel(
+            self, text="Average Motivation", text_color="black"
+        )
+        self.MotivationLabel.place(relx=0.3, rely=0.58, anchor="e")
+
+        self.MotivationSlider = customtkinter.CTkSlider(
+            self, from_=1, to=10, number_of_steps=9, width=200,
+            fg_color="#BEF8FF", progress_color="#5EE2F1", button_color="#3CC1D4", button_hover_color="#2BA0B4"
+        )
+        self.MotivationSlider.set(5)
+        self.MotivationSlider.place(relx=0.35, rely=0.58, anchor="w")
+
+        self.EnergyLabel = customtkinter.CTkLabel(
+            self, text="Average Energy Levels", text_color="black"
+        )
+        self.EnergyLabel.place(relx=0.3, rely=0.66, anchor="e")
+
+        self.EnergySlider = customtkinter.CTkSlider(
+            self, from_=1, to=10, number_of_steps=9, width=200,
+            fg_color="#BEF8FF", progress_color="#5EE2F1", button_color="#3CC1D4", button_hover_color="#2BA0B4"
+        )
+        self.EnergySlider.set(5)
+        self.EnergySlider.place(relx=0.35, rely=0.66, anchor="w")
         
+        self.RegisterButton = customtkinter.CTkButton(
+            master=self,
+            text="Register",
+            fg_color="#5EE2F1",
+            hover_color="#3CC1D4",
+            width=200,
+            height=40,
+        )
+        self.RegisterButton.place(relx=0.5, rely=0.8, anchor="center")
+
+        # ============ Feedback Label ============
+        self.FeedbackLabel = customtkinter.CTkLabel(
+            self, text="", text_color="red"
+        )
+        self.FeedbackLabel.place(relx=0.5, rely=0.87, anchor="center")    
     
 
     def FadeOut(self, step=0.05):

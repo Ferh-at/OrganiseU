@@ -25,6 +25,10 @@ class WeakPasswordError(AuthError):
     "Raised when password does not meet strength requirements."
     pass
 
+class AlreadyOnboardedError(AuthError):
+    "Raised if onboarding is attempted for a user who has already completed it."
+    pass
+
 
 class Auth:
     def __init__(self, DBPath: str = "src/core/UsersDatabase.db"):
@@ -37,7 +41,6 @@ class Auth:
     def _InitialiseDB(self) -> None:
         with GetDBConnection(self.DBPath) as conn:
             cursor = conn.cursor()
-            cursor.execute("PRAGMA journal_mode=WAL;")  # enable WAL mode
             cursor.execute("""
                 CREATE TABLE IF NOT EXISTS users (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -46,6 +49,12 @@ class Auth:
                     salt BLOB NOT NULL,
                     failed_attempts INTEGER DEFAULT 0,
                     lockout_until TEXT DEFAULT NULL
+    
+                    concentration INTEGER DEFAULT NULL,
+                    discipline INTEGER DEFAULT NULL,
+                    motivation INTEGER DEFAULT NULL,
+                    energy INTEGER DEFAULT NULL,
+                    is_onboarded INTEGER DEFAULT 0
                 )
             """)
             cursor.execute("""
@@ -76,7 +85,7 @@ class Auth:
         return True
 
     def _LogAction(self, username: str, action: str, conn=None) -> None:
-        """Record an event in the audit log."""
+        "Record an event in the audit log."
         close_after = False
         if conn is None:
             conn = sqlite3.connect(self.DBPath)
@@ -138,7 +147,7 @@ class Auth:
             conn.close()
 
     def _ResetFailedAttempts(self, username: str, conn=None) -> None:
-        """Reset failed login attempts after a successful login."""
+        "Reset failed login attempts after a successful login."
         close_after = False
         if conn is None:
             conn = sqlite3.connect(self.DBPath)
@@ -154,7 +163,6 @@ class Auth:
         if close_after:
             conn.close()
 
-    # Core features
     def RegisterUser(self, username: str, password: str) -> bool:
         "Register a new user after validation and hashing."
         if not self._ValidateUsername(username):
@@ -179,7 +187,34 @@ class Auth:
 
         self._LogAction(username, "User registered")
         return True
+    def SaveOnboardingData(self, username: str, data: dict) -> bool:
+        """
+        Save onboarding ratings (concentration, discipline, motivation, energy).
+        Can only be set once per user.
+        """
+        with GetDBConnection(self.DBPath) as conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT is_onboarded FROM users WHERE username = ?", (username,))
+            result = cursor.fetchone()
 
+            if not result:
+                raise InvalidCredentialsError("User does not exist.")
+            
+            if result[0] == 1:
+                raise AlreadyOnboardedError("User already completed onboarding.")
+
+            cursor.execute("""
+                UPDATE users 
+                SET concentration = ?, discipline = ?, motivation = ?, energy = ?, is_onboarded = 1
+                WHERE username = ?
+            """, (
+                data.get("Concentration"),
+                data.get("Discipline"),
+                data.get("Motivation"),
+                data.get("Energy"),
+                username
+            ))
+            conn.commit()
     def LoginUser(self, username: str, password: str) -> bool:
         """Attempt to log in a user, with lockout and logging."""
         if not self.UserExists(username):
