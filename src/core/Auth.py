@@ -1,6 +1,7 @@
 import bcrypt
 import re
 import datetime
+import sqlite3
 
 from utils.AuthenticationWrapper import GetDBConnection
 
@@ -28,15 +29,15 @@ class WeakPasswordError(AuthError):
 class Auth:
     def __init__(self, DBPath: str = "src/core/UsersDatabase.db"):
         self.DBPath = DBPath
-        self.MaxAttempts = 3  # lock account after 5 failed attempts
-        self.LockoutMinutes = 10
+        self.MaxAttempts = 10  # lock account after 5 failed attempts
+        self.LockoutMinutes = 1
         self._InitialiseDB()
 
     # Database initialisation
     def _InitialiseDB(self) -> None:
-        """Create the necessary tables if they do not exist."""
         with GetDBConnection(self.DBPath) as conn:
             cursor = conn.cursor()
+            cursor.execute("PRAGMA journal_mode=WAL;")  # enable WAL mode
             cursor.execute("""
                 CREATE TABLE IF NOT EXISTS users (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -57,7 +58,6 @@ class Auth:
             """)
             conn.commit()
     
-    # Validation
     def _ValidateUsername(self, username: str) -> bool:
         "Check that the username is alphanumeric and between 5–15 characters."
         return bool(re.match(r"^[A-Za-z0-9_]{5,15}$", username))
@@ -75,16 +75,22 @@ class Auth:
             return False
         return True
 
-    # Helper methods
-    def _LogAction(self, username: str, action: str) -> None:
-        "Record an event in the audit log."
-        with GetDBConnection(self.DBPath) as conn:
-            cursor = conn.cursor()
-            cursor.execute(
-                "INSERT INTO audit_log (username, action, timestamp) VALUES (?, ?, ?)",
-                (username, action, datetime.datetime.now().isoformat())
-            )
-            conn.commit()
+    def _LogAction(self, username: str, action: str, conn=None) -> None:
+        """Record an event in the audit log."""
+        close_after = False
+        if conn is None:
+            conn = sqlite3.connect(self.DBPath)
+            close_after = True
+
+        cursor = conn.cursor()
+        cursor.execute(
+            "INSERT INTO audit_log (username, action, timestamp) VALUES (?, ?, ?)",
+            (username, action, datetime.datetime.now().isoformat())
+        )
+        conn.commit()
+
+        if close_after:
+            conn.close()
 
     def _IsAccountLocked(self, username: str) -> bool:
         "Check if an account is currently locked out."
@@ -101,41 +107,52 @@ class Auth:
                 return True
         return False
 
-    def _IncrementFaileds(self, username: str) -> None:
-        "Increase failed login attempts, lock account if necessary."
-        with GetDBConnection(self.DBPath) as conn:
-            cursor = conn.cursor()
-            cursor.execute(
-                "SELECT failed_attempts FROM users WHERE username = ?", (username,)
-            )
-            result = cursor.fetchone()
-            if result:
-                failed_attempts = result[0] + 1
-                if failed_attempts >= self.MaxAttempts:
-                    lockout_until = datetime.datetime.now() + datetime.timedelta(
-                        minutes=self.LockoutMinutes
-                    )
-                    cursor.execute(
-                        "UPDATE users SET failed_attempts = 0, lockout_until = ? WHERE username = ?",
-                        (lockout_until.isoformat(), username),
-                    )
-                    self._LogAction(username, "Account locked")
-                else:
-                    cursor.execute(
-                        "UPDATE users SET failed_attempts = ? WHERE username = ?",
-                        (failed_attempts, username),
-                    )
-                conn.commit()
+    def _IncrementFaileds(self, username: str, conn=None) -> None:
+        """Increase failed login attempts, lock account if necessary."""
+        close_after = False
+        if conn is None:
+            conn = sqlite3.connect(self.DBPath)
+            close_after = True
 
-    def _ResetFailedAttempts(self, username: str) -> None:
-        "Reset failed login attempts after a successful login."
-        with GetDBConnection(self.DBPath) as conn:
-            cursor = conn.cursor()
-            cursor.execute(
-                "UPDATE users SET failed_attempts = 0, lockout_until = NULL WHERE username = ?",
-                (username,),
-            )
-            conn.commit()
+        cursor = conn.cursor()
+        cursor.execute("SELECT failed_attempts FROM users WHERE username = ?", (username,))
+        result = cursor.fetchone()
+
+        if result:
+            failed_attempts = result[0] + 1
+            if failed_attempts >= self.MaxAttempts:
+                lockout_until = datetime.datetime.now() + datetime.timedelta(minutes=self.LockoutMinutes)
+                cursor.execute(
+                    "UPDATE users SET failed_attempts = 0, lockout_until = ? WHERE username = ?",
+                    (lockout_until.isoformat(), username),
+                )
+                self._LogAction(username, "Account locked", conn)
+            else:
+                cursor.execute(
+                    "UPDATE users SET failed_attempts = ? WHERE username = ?",
+                    (failed_attempts, username),
+                )
+        conn.commit()
+
+        if close_after:
+            conn.close()
+
+    def _ResetFailedAttempts(self, username: str, conn=None) -> None:
+        """Reset failed login attempts after a successful login."""
+        close_after = False
+        if conn is None:
+            conn = sqlite3.connect(self.DBPath)
+            close_after = True
+
+        cursor = conn.cursor()
+        cursor.execute(
+            "UPDATE users SET failed_attempts = 0, lockout_until = NULL WHERE username = ?",
+            (username,),
+        )
+        conn.commit()
+
+        if close_after:
+            conn.close()
 
     # Core features
     def RegisterUser(self, username: str, password: str) -> bool:
@@ -164,7 +181,7 @@ class Auth:
         return True
 
     def LoginUser(self, username: str, password: str) -> bool:
-        "Attempt to log in a user, with lockout and logging."
+        """Attempt to log in a user, with lockout and logging."""
         if not self.UserExists(username):
             raise InvalidCredentialsError("User not found.")
 
@@ -178,18 +195,18 @@ class Auth:
             )
             result = cursor.fetchone()
 
-        if result is None:
-            raise InvalidCredentialsError("Invalid login attempt.")
+            if result is None:
+                raise InvalidCredentialsError("Invalid login attempt.")
 
-        stored_hash, stored_salt = result
-        if bcrypt.checkpw(password.encode("utf-8"), stored_hash.encode("utf-8")):
-            self._ResetFailedAttempts(username)
-            self._LogAction(username, "Successful login")
-            return True
-        else:
-            self._IncrementFaileds(username)
-            self._LogAction(username, "Failed login")
-            raise InvalidCredentialsError("Incorrect password.")
+            stored_hash, stored_salt = result
+            if bcrypt.checkpw(password.encode("utf-8"), stored_hash.encode("utf-8")):
+                self._ResetFailedAttempts(username, conn)
+                self._LogAction(username, "Successful login", conn)
+                return True
+            else:
+                self._IncrementFaileds(username, conn)
+                self._LogAction(username, "Failed login", conn)
+                raise InvalidCredentialsError("Incorrect password.")
 
     def UserExists(self, username: str) -> bool:
         "Check if a username is already registered."

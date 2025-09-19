@@ -43,7 +43,7 @@ class EntryWindow(customtkinter.CTkFrame):
             text="", 
             fg_color="#BEF8FF", 
             hover_color="#5EE2F1",
-            corner_radius=25,
+
             command=self.ButtonPressed
         )
         
