@@ -2,6 +2,7 @@ import customtkinter
 from PIL import Image
 from core.Auth import Auth, InvalidCredentialsError
 from gui.RegistrationWindow import RegistrationWindow
+from gui.MainMenuWindow import MainMenu
 
 class LoginWindow(customtkinter.CTkFrame):
     def __init__(self, parent):
@@ -100,6 +101,8 @@ class LoginWindow(customtkinter.CTkFrame):
             self.FeedbackLabel.configure(text="Invalid username or password", text_color="red")
         except Exception as e:
             self.FeedbackLabel.configure(text=f"Unexpected error, {str(e)}", text_color="red")
+        
+        self.FadeOut()
 
     def AttemptRegistration(self):
         self.SlideOut()
@@ -113,7 +116,7 @@ class LoginWindow(customtkinter.CTkFrame):
             self.after(20, self.FadeOut, step)
         else:
             self.destroy()
-            login = RegistrationWindow(self.parent)
+            login = MainMenu(self.parent)
             login.grid(row=0, column=0, sticky="nsew")
             login.FadeIn()
     def FadeIn(self, step=0.05):

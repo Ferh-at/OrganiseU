@@ -1,4 +1,6 @@
 import customtkinter
+from PIL import Image
+from datetime import datetime
 
 
 class MainMenu(customtkinter.CTkFrame):
@@ -6,7 +8,25 @@ class MainMenu(customtkinter.CTkFrame):
         super().__init__(parent)
 
         self.parent = parent
-    
+
+        try:
+            BackgroundImagePIL = Image.open("assets/BackgroundNormal.png")
+            original_width, original_height = BackgroundImagePIL.size
+            self.BGImage = customtkinter.CTkImage(light_image=BackgroundImagePIL, size=(original_width, original_height))
+            
+            self.BackgroundLabel = customtkinter.CTkLabel(self, image=self.BGImage, text="")
+            self.BackgroundLabel.grid(row=0, column=0, sticky="nsew")  
+
+        except FileNotFoundError:
+            print("Warning: assets/Background.jpg not found. Using solid color.")
+            self.configure(fg_color="#1A7FD2") 
+            self.BGImage = None 
+        except Exception as e: 
+            print(f"Error loading background image: {e}")
+            self.configure(fg_color="#1A7FD2")
+            self.BGImage = None
+        
+
 
     def FadeOut(self, step=0.05):
         alpha = self.parent.attributes("-alpha")
@@ -19,6 +39,7 @@ class MainMenu(customtkinter.CTkFrame):
             login = MainMenu(self.parent)
             login.grid(row=0, column=0, sticky="nsew")
             login.FadeIn()
+
     def FadeIn(self, step=0.05):
         alpha = self.parent.attributes("-alpha")
         if alpha < 1:

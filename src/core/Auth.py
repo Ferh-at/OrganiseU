@@ -48,7 +48,7 @@ class Auth:
                     password_hash TEXT NOT NULL,
                     salt BLOB NOT NULL,
                     failed_attempts INTEGER DEFAULT 0,
-                    lockout_until TEXT DEFAULT NULL
+                    lockout_until TEXT DEFAULT NULL,
     
                     concentration INTEGER DEFAULT NULL,
                     discipline INTEGER DEFAULT NULL,
@@ -163,7 +163,7 @@ class Auth:
         if close_after:
             conn.close()
 
-    def RegisterUser(self, username: str, password: str) -> bool:
+    def RegisterUser(self, username: str, password: str, concentration, discipline, motivation, energy) -> bool:
         "Register a new user after validation and hashing."
         if not self._ValidateUsername(username):
             raise ValueError("Invalid username. Use 3–20 letters, numbers, or underscores.")
@@ -180,13 +180,20 @@ class Auth:
         with GetDBConnection(self.DBPath) as conn:
             cursor = conn.cursor()
             cursor.execute(
-                "INSERT INTO users (username, password_hash, salt) VALUES (?, ?, ?)",
-                (username, hashed_password.decode("utf-8"), salt),
-            )
+                """
+                INSERT INTO users (
+                    username, password_hash, salt,
+                    concentration, discipline, motivation, energy, is_onboarded
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (username, hashed_password.decode("utf-8"), salt,
+                concentration, discipline, motivation, energy, 1) #? The 1 stands for IsOnboarded
+            )   
             conn.commit()
 
         self._LogAction(username, "User registered")
         return True
+    
     def SaveOnboardingData(self, username: str, data: dict) -> bool:
         """
         Save onboarding ratings (concentration, discipline, motivation, energy).
@@ -215,6 +222,10 @@ class Auth:
                 username
             ))
             conn.commit()
+
+        self._LogAction(username, "Onboarding completed")
+        return True 
+    
     def LoginUser(self, username: str, password: str) -> bool:
         """Attempt to log in a user, with lockout and logging."""
         if not self.UserExists(username):

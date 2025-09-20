@@ -2,13 +2,13 @@ import customtkinter
 from PIL import Image
 from core.Auth import Auth
 from gui.MainMenuWindow import MainMenu
-
+import time
 
 class RegistrationWindow(customtkinter.CTkFrame):
     def __init__(self, parent):
         super().__init__(parent)
         self.parent = parent
-
+        self.Auth = Auth()
 
         try:
             BackgroundImagePIL = Image.open("assets/BackgroundNormal.png")
@@ -69,7 +69,7 @@ class RegistrationWindow(customtkinter.CTkFrame):
         self.ConfirmPasswordEntry.place(relx=0.5, rely=0.31, anchor="center")
 
         self.ConcentrationLabel = customtkinter.CTkLabel(
-            self, text="Average Concentration", text_color="black"
+            self, text="Average Concentration", text_color="black",  fg_color="#BEF8FF"
         )
         self.ConcentrationLabel.place(relx=0.3, rely=0.42, anchor="e")
 
@@ -82,7 +82,7 @@ class RegistrationWindow(customtkinter.CTkFrame):
 
 
         self.DisciplineLabel = customtkinter.CTkLabel(
-            self, text="Average Discipline", text_color="black"
+            self, text="Average Discipline", text_color="black", fg_color="#BEF8FF"
         )
         self.DisciplineLabel.place(relx=0.3, rely=0.50, anchor="e")
 
@@ -94,7 +94,7 @@ class RegistrationWindow(customtkinter.CTkFrame):
         self.DisciplineSlider.place(relx=0.35, rely=0.50, anchor="w")
 
         self.MotivationLabel = customtkinter.CTkLabel(
-            self, text="Average Motivation", text_color="black"
+            self, text="Average Motivation", text_color="black",  fg_color="#BEF8FF"
         )
         self.MotivationLabel.place(relx=0.3, rely=0.58, anchor="e")
 
@@ -106,7 +106,7 @@ class RegistrationWindow(customtkinter.CTkFrame):
         self.MotivationSlider.place(relx=0.35, rely=0.58, anchor="w")
 
         self.EnergyLabel = customtkinter.CTkLabel(
-            self, text="Average Energy Levels", text_color="black"
+            self, text="Average Energy Levels", text_color="black", fg_color="#BEF8FF"
         )
         self.EnergyLabel.place(relx=0.3, rely=0.66, anchor="e")
 
@@ -124,6 +124,7 @@ class RegistrationWindow(customtkinter.CTkFrame):
             hover_color="#3CC1D4",
             width=200,
             height=40,
+            command= self.AttemptRegister
         )
         self.RegisterButton.place(relx=0.5, rely=0.8, anchor="center")
 
@@ -133,7 +134,37 @@ class RegistrationWindow(customtkinter.CTkFrame):
         )
         self.FeedbackLabel.place(relx=0.5, rely=0.87, anchor="center")    
     
+    def AttemptRegister(self):
+        Username = self.UsernameEntry.get().strip()
+        Password = self.PasswordEntry.get().strip()
+        PasswordConf = self.ConfirmPasswordEntry.get().strip()
 
+        if Password != PasswordConf:
+            self.FeedbackLabel.configure(text="Passwords do not match", text_color = "red")
+            return
+
+        Concentration = int(self.ConcentrationSlider.get())
+        Discipline = int(self.DisciplineSlider.get())
+        Motivation = int(self.MotivationSlider.get())
+        Energy = int(self.EnergySlider.get())
+
+        try:
+            self.Auth.RegisterUser(
+                Username,
+                Password,
+                Concentration,
+                Discipline,
+                Motivation,
+                Energy
+            )
+        except Exception as e:
+            self.FeedbackLabel.configure(text=f"An error has occured, {e}", text_color="red")
+        
+        self.FeedbackLabel.configure(text="Registration successful", text_color="green")
+        time.sleep(3)
+
+        self.FadeOut()
+            
     def FadeOut(self, step=0.05):
         alpha = self.parent.attributes("-alpha")
         if alpha > 0:
