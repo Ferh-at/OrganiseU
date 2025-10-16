@@ -116,7 +116,7 @@ class LoginWindow(customtkinter.CTkFrame):
             self.after(20, self.FadeOut, step)
         else:
             self.destroy()
-            login = MainMenu(self.parent)
+            login = MainMenu(self.parent, self.UsernameEntry.get().strip())
             login.grid(row=0, column=0, sticky="nsew")
             login.FadeIn()
     def FadeIn(self, step=0.05):
