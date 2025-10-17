@@ -96,7 +96,6 @@ class LoginWindow(customtkinter.CTkFrame):
         try:
             if self.auth.LoginUser(username, password):
                 self.FeedbackLabel.configure(text="Login Successful", text_color="green")
-                # transition to the main window with tasks, habits etc. here
         except InvalidCredentialsError:
             self.FeedbackLabel.configure(text="Invalid username or password", text_color="red")
         except Exception as e:

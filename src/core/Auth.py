@@ -30,48 +30,20 @@ class AlreadyOnboardedError(AuthError):
     pass
 
 def HashingFunction(input_string: str) -> str:
-    """
-    A simple, custom hashing function built from first principles without modules.
-    WARNING: This is NOT cryptographically secure and is for demonstration only.
-    
-    It processes the input string and uses bitwise operations to create a
-    fixed-length hexadecimal hash string.
-    """
-    # 1. Initialize State Variables (Hash Registers)
-    # These are "nothing-up-my-sleeve" numbers, often derived from primes or constants.
-    # We'll use the first 8 prime numbers.
     state = [2, 3, 5, 7, 11, 13, 17, 19]
     
-    # A large prime number to keep our results within a manageable integer range.
-    # This is our "modulus". 32-bit prime.
     MODULUS = 2**31 - 1
 
-    # 2. Process the Input String
     for char in input_string:
-        # Get the ASCII value of the character.
         char_code = ord(char)
-        
-        # 3. Update State Variables (The "Mixing" Function)
-        # This is the core of the algorithm. We mix the character code
-        # into our state variables in a complex, non-linear way.
         for i in range(len(state)):
-            # XOR the character code with the current state
             state[i] = (state[i] ^ char_code)
-            
-            # A simple non-linear mixing function using bitwise shifts and addition
-            # The left shift (<<) and right shift (>>) quickly alter the number.
-            # The constants (3, 5, 7) are chosen to be small primes.
-            state[i] = (state[i] << 3 | state[i] >> (29)) & MODULUS # Bitwise rotation
+            state[i] = (state[i] << 3 | state[i] >> (29)) & MODULUS
             state[i] = (state[i] + state[(i - 1) % len(state)]) & MODULUS
             state[i] = (state[i] * (i + 7)) & MODULUS
-
-    # 4. Finalize the Hash
-    # Combine the final state variables into a single hexadecimal string.
     final_hash = ""
     for num in state:
-        # The format '{:08x}' ensures each number is converted to an 8-character
-        # zero-padded hex string, creating a consistent final length.
-        # e.g., 255 becomes "000000ff"
+
         final_hash += '{:08x}'.format(num)
         
     return final_hash
