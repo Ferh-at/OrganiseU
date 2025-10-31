@@ -187,6 +187,7 @@ class RegistrationWindow(customtkinter.CTkFrame):
             self.FeedbackLabel.configure(
                 text=f"An error has occured, {e}", text_color="red"
             )
+            return
 
         self.FeedbackLabel.configure(text="Registration successful", text_color="green")
         self.registered_username = Username

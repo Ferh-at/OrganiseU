@@ -9,263 +9,463 @@ class MainMenu(customtkinter.CTkFrame):
 
         self.parent = parent
         self.username = username
-        self.task_manager = TaskManager()
+        self.TaskManager = TaskManager()
+
+        # Color palette - consistent throughout
+        self.Colors = {
+            "Primary": "#2E86AB",  # Main blue
+            "Secondary": "#06A77D",  # Green accent
+            "Accent": "#F18F01",  # Orange accent
+            "Dark": "#1B263B",  # Dark background
+            "Light": "#E8F4F8",  # Light background
+            "Text": "#FFFFFF",  # White text
+            "TextDark": "#1B263B",  # Dark text
+            "Success": "#06A77D",  # Success green
+            "Warning": "#F18F01",  # Warning orange
+            "Hover": "#A23B72",  # Hover purple
+        }
 
         try:
             BackgroundImagePIL = Image.open("assets/BackgroundNormal.png")
-            original_width, original_height = BackgroundImagePIL.size
+            OriginalWidth, OriginalHeight = BackgroundImagePIL.size
             self.BGImage = customtkinter.CTkImage(
-                light_image=BackgroundImagePIL, size=(original_width, original_height)
+                light_image=BackgroundImagePIL, size=(OriginalWidth, OriginalHeight)
             )
-
             self.BackgroundLabel = customtkinter.CTkLabel(
                 self, image=self.BGImage, text=""
             )
             self.BackgroundLabel.grid(row=0, column=0, sticky="nsew")
-
         except FileNotFoundError:
-            print("Warning: assets/Background.jpg not found. Using solid color.")
-            self.configure(fg_color="#1A7FD2")
+            print("Warning: assets/BackgroundNormal.png not found. Using solid color.")
+            self.configure(fg_color=self.Colors["Dark"])
             self.BGImage = None
         except Exception as e:
             print(f"Error loading background image: {e}")
-            self.configure(fg_color="#1A7FD2")
+            self.configure(fg_color=self.Colors["Dark"])
             self.BGImage = None
-        # tasks dropdown (OptionMenu)
-        # Header
-        self.tasks_label = customtkinter.CTkLabel(
-            master=self,
-            text=f"Welcome, {self.username}",
-            text_color="white",
-            font=("Montserrat", 20, "bold"),
-            fg_color="#1A7FD2",
+
+        self._CreateHeader()
+        self._CreateOverviewSection()
+        self._CreateQuickActions()
+        self._CreateProductivityTools()
+
+        # Configure grid weights for responsive layout
+        self.grid_rowconfigure(0, weight=1)
+        self.grid_columnconfigure(0, weight=1)
+
+    def _CreateHeader(self):
+        # Header section with welcome message and clock
+        HeaderFrame = customtkinter.CTkFrame(self, fg_color="transparent")
+        HeaderFrame.place(relx=0, rely=0, relwidth=1.0, relheight=0.12)
+
+        # Welcome label
+        self.WelcomeLabel = customtkinter.CTkLabel(
+            HeaderFrame,
+            text=f"Welcome back, {self.username}! 👋",
+            text_color=self.Colors["Text"],
+            font=("Montserrat", 24, "bold"),
+            fg_color=self.Colors["Primary"],
+            corner_radius=12,
+            height=50,
         )
-        self.tasks_label.place(relx=0.5, rely=0.10, anchor="center")
+        self.WelcomeLabel.place(relx=0.02, rely=0.5, anchor="w")
 
-        # Today Overview box
-        total, completed, pending = self.task_manager.count_tasks(self.username)
-        self.overview_frame = customtkinter.CTkFrame(self, fg_color="#134E96")
-        self.overview_frame.place(relx=0.5, rely=0.24, anchor="center")
+        # Live clock
+        self.ClockLabel = customtkinter.CTkLabel(
+            HeaderFrame,
+            text="",
+            text_color=self.Colors["Text"],
+            font=("Montserrat", 14),
+            fg_color=self.Colors["Dark"],
+            corner_radius=8,
+            height=35,
+            width=180,
+        )
+        self.ClockLabel.place(relx=0.98, rely=0.5, anchor="e")
+        self._TickClock()
 
-        self.overview_title = customtkinter.CTkLabel(
-            self.overview_frame,
-            text="Today Overview",
-            text_color="white",
+    def _CreateOverviewSection(self):
+        # Overview section with stats and quick task access
+        OverviewFrame = customtkinter.CTkFrame(
+            self, fg_color=self.Colors["Primary"], corner_radius=15
+        )
+        OverviewFrame.place(
+            relx=0.5, rely=0.17, anchor="center", relwidth=0.95, relheight=0.20
+        )
+
+        # Title
+        OverviewTitle = customtkinter.CTkLabel(
+            OverviewFrame,
+            text="📊 Today's Overview",
+            text_color=self.Colors["Text"],
             font=("Montserrat", 16, "bold"),
         )
-        self.overview_title.place(relx=0.5, rely=0.2, anchor="center")
+        OverviewTitle.place(relx=0.5, rely=0.3, anchor="center")
 
-        self.overview_stats = customtkinter.CTkLabel(
-            self.overview_frame,
-            text=f"Tasks: {completed}/{total} completed  •  Pending: {pending}",
-            text_color="white",
-            font=("Montserrat", 14),
+        # Stats display
+        Total, Completed, Pending = self.TaskManager.CountTasks(self.username)
+        CompletionRate = int((Completed / Total * 100) if Total > 0 else 0)
+
+        self.OverviewStats = customtkinter.CTkLabel(
+            OverviewFrame,
+            text=f"✅ {Completed}/{Total} Completed  •  ⏳ {Pending} Pending  •  📈 {CompletionRate}%",
+            text_color=self.Colors["Text"],
+            font=("Montserrat", 12),
         )
-        self.overview_stats.place(relx=0.5, rely=0.6, anchor="center")
+        self.OverviewStats.place(relx=0.5, rely=0.55, anchor="center")
 
-        # Live clock (top-right)
-        self.clock_label = customtkinter.CTkLabel(
-            master=self,
-            text="",
-            text_color="white",
-            font=("Montserrat", 14),
-            fg_color="#1A7FD2",
+        # Quick task dropdown
+        TaskTitles = [Title for _id, Title in self.TaskManager.GetTasks(self.username)]
+        if not TaskTitles:
+            TaskTitles = ["No tasks yet - click 'Add Task' to get started!"]
+
+        self.TasksDropdown = customtkinter.CTkOptionMenu(
+            OverviewFrame,
+            values=TaskTitles,
+            fg_color=self.Colors["Secondary"],
+            button_color=self.Colors["Accent"],
+            button_hover_color=self.Colors["Warning"],
+            text_color=self.Colors["Text"],
+            font=("Montserrat", 11),
+            width=350,
+            height=30,
         )
-        self.clock_label.place(relx=0.93, rely=0.06, anchor="center")
-        self._tick_clock()
+        self.TasksDropdown.place(relx=0.5, rely=0.82, anchor="center")
 
-        # Quick Actions
-        self.add_task_btn = customtkinter.CTkButton(
-            master=self,
-            text="Add Task",
-            fg_color="#5EE2F1",
-            hover_color="#3CC1D4",
-            text_color="black",
-            width=160,
-            height=40,
-            command=self.on_add_task,
+    def _CreateQuickActions(self):
+        # Quick actions section - primary task management
+        # Button container frame
+        ActionsFrame = customtkinter.CTkFrame(
+            self, fg_color=self.Colors["Primary"], corner_radius=12
         )
-        self.add_task_btn.place(relx=0.25, rely=0.75, anchor="center")
+        ActionsFrame.place(relx=0.02, rely=0.40, relwidth=0.96, relheight=0.12)
 
-        self.view_tasks_btn = customtkinter.CTkButton(
-            master=self,
-            text="Task Manager",
-            fg_color="#5EE2F1",
-            hover_color="#3CC1D4",
-            text_color="black",
-            width=160,
-            height=40,
-            command=self.on_open_task_manager,
+        # Label right above the box
+        ActionsLabel = customtkinter.CTkLabel(
+            self,
+            text="⚡ Quick Actions",
+            text_color=self.Colors["Text"],
+            font=("Montserrat", 15, "bold"),
+            fg_color="transparent",
         )
-        self.view_tasks_btn.place(relx=0.5, rely=0.75, anchor="center")
+        ActionsLabel.place(relx=0.02, rely=0.37, anchor="w")
 
-        self.habits_btn = customtkinter.CTkButton(
-            master=self,
-            text="Habit Tracker",
-            fg_color="#5EE2F1",
-            hover_color="#3CC1D4",
-            text_color="black",
-            width=160,
-            height=40,
-            command=self.on_open_habits,
+        # Add Task button
+        self.AddTaskBtn = customtkinter.CTkButton(
+            ActionsFrame,
+            text="➕ Add Task",
+            fg_color=self.Colors["Secondary"],
+            hover_color=self.Colors["Success"],
+            text_color=self.Colors["Text"],
+            font=("Montserrat", 12, "bold"),
+            width=165,
+            height=42,
+            corner_radius=10,
+            command=self.OnAddTask,
         )
-        self.habits_btn.place(relx=0.75, rely=0.75, anchor="center")
+        self.AddTaskBtn.grid(row=0, column=0, padx=10, pady=8)
 
-        # Placeholder for future: timer and analytics
-        self.timer_btn = customtkinter.CTkButton(
-            master=self,
-            text="Task Timer",
-            fg_color="#5EE2F1",
-            hover_color="#3CC1D4",
-            text_color="black",
-            width=160,
-            height=36,
-            command=self.on_open_timer,
+        # Task Manager button
+        self.ViewTasksBtn = customtkinter.CTkButton(
+            ActionsFrame,
+            text="📋 Task Manager",
+            fg_color=self.Colors["Accent"],
+            hover_color=self.Colors["Warning"],
+            text_color=self.Colors["Text"],
+            font=("Montserrat", 12, "bold"),
+            width=165,
+            height=42,
+            corner_radius=10,
+            command=self.OnOpenTaskManager,
         )
-        self.timer_btn.place(relx=0.35, rely=0.86, anchor="center")
+        self.ViewTasksBtn.grid(row=0, column=1, padx=10, pady=8)
 
-        self.analytics_btn = customtkinter.CTkButton(
-            master=self,
-            text="Analytics",
-            fg_color="#5EE2F1",
-            hover_color="#3CC1D4",
-            text_color="black",
-            width=160,
-            height=36,
-            command=self.on_open_analytics,
+        # Habit Tracker button
+        self.HabitsBtn = customtkinter.CTkButton(
+            ActionsFrame,
+            text="🎯 Habit Tracker",
+            fg_color=self.Colors["Secondary"],
+            hover_color=self.Colors["Success"],
+            text_color=self.Colors["Text"],
+            font=("Montserrat", 12, "bold"),
+            width=165,
+            height=42,
+            corner_radius=10,
+            command=self.OnOpenHabits,
         )
-        self.analytics_btn.place(relx=0.65, rely=0.86, anchor="center")
+        self.HabitsBtn.grid(row=0, column=2, padx=10, pady=8)
 
-        # Refresh tasks preview dropdown (kept minimal)
-        task_titles = [
-            title for _id, title in self.task_manager.get_tasks(self.username)
-        ]
-        if not task_titles:
-            task_titles = ["No tasks yet"]
-        self.tasks_dropdown = customtkinter.CTkOptionMenu(
-            master=self,
-            values=task_titles,
-            fg_color="#5EE2F1",
-            button_color="#3CC1D4",
-            text_color="black",
+        # Analytics button
+        self.AnalyticsBtn = customtkinter.CTkButton(
+            ActionsFrame,
+            text="📊 Analytics",
+            fg_color=self.Colors["Dark"],
+            hover_color=self.Colors["Primary"],
+            text_color=self.Colors["Text"],
+            font=("Montserrat", 12, "bold"),
+            width=165,
+            height=42,
+            corner_radius=10,
+            command=self.OnOpenAnalytics,
         )
-        self.tasks_dropdown.place(relx=0.5, rely=0.42, anchor="center")
+        self.AnalyticsBtn.grid(row=0, column=3, padx=10, pady=8)
 
-    def FadeOut(self, step=0.05):
-        alpha = self.parent.attributes("-alpha")
-        if alpha > 0:
-            alpha = max(0, alpha - step)
-            self.parent.attributes("-alpha", alpha)
-            self.after(20, self.FadeOut, step)
+    def _CreateProductivityTools(self):
+        # Productivity tools section
+        # Tools button container
+        ToolsFrame = customtkinter.CTkFrame(
+            self, fg_color=self.Colors["Primary"], corner_radius=12
+        )
+        ToolsFrame.place(relx=0.02, rely=0.55, relwidth=0.96, relheight=0.20)
+
+        # Label right above the box
+        ToolsLabel = customtkinter.CTkLabel(
+            self,
+            text="🛠️ Productivity Tools",
+            text_color=self.Colors["Text"],
+            font=("Montserrat", 15, "bold"),
+            fg_color="transparent",
+        )
+        ToolsLabel.place(relx=0.02, rely=0.52, anchor="w")
+
+        # Timer button
+        self.TimerBtn = customtkinter.CTkButton(
+            ToolsFrame,
+            text="⏱️ Focus Timer\n(Pomodoro)",
+            fg_color=self.Colors["Secondary"],
+            hover_color=self.Colors["Success"],
+            text_color=self.Colors["Text"],
+            font=("Montserrat", 11, "bold"),
+            width=135,
+            height=65,
+            corner_radius=10,
+            command=self.OnOpenTimer,
+        )
+        self.TimerBtn.grid(row=0, column=0, padx=8, pady=8)
+
+        # Notes button
+        self.NotesBtn = customtkinter.CTkButton(
+            ToolsFrame,
+            text="📝 Quick Notes",
+            fg_color=self.Colors["Accent"],
+            hover_color=self.Colors["Warning"],
+            text_color=self.Colors["Text"],
+            font=("Montserrat", 11, "bold"),
+            width=135,
+            height=65,
+            corner_radius=10,
+            command=self.OnOpenNotes,
+        )
+        self.NotesBtn.grid(row=0, column=1, padx=8, pady=8)
+
+        # Goals button
+        self.GoalsBtn = customtkinter.CTkButton(
+            ToolsFrame,
+            text="🎯 Daily Goals",
+            fg_color=self.Colors["Secondary"],
+            hover_color=self.Colors["Success"],
+            text_color=self.Colors["Text"],
+            font=("Montserrat", 11, "bold"),
+            width=135,
+            height=65,
+            corner_radius=10,
+            command=self.OnOpenGoals,
+        )
+        self.GoalsBtn.grid(row=0, column=2, padx=8, pady=8)
+
+        # Calendar button
+        self.CalendarBtn = customtkinter.CTkButton(
+            ToolsFrame,
+            text="📅 Calendar",
+            fg_color=self.Colors["Accent"],
+            hover_color=self.Colors["Warning"],
+            text_color=self.Colors["Text"],
+            font=("Montserrat", 11, "bold"),
+            width=135,
+            height=65,
+            corner_radius=10,
+            command=self.OnOpenCalendar,
+        )
+        self.CalendarBtn.grid(row=0, column=3, padx=8, pady=8)
+
+        # Settings button
+        self.SettingsBtn = customtkinter.CTkButton(
+            ToolsFrame,
+            text="⚙️ Settings",
+            fg_color=self.Colors["Dark"],
+            hover_color=self.Colors["Primary"],
+            text_color=self.Colors["Text"],
+            font=("Montserrat", 11, "bold"),
+            width=135,
+            height=65,
+            corner_radius=10,
+            command=self.OnOpenSettings,
+        )
+        self.SettingsBtn.grid(row=0, column=4, padx=8, pady=8)
+
+    # ========= Animation Methods =========
+    def FadeOut(self, Step=0.05):
+        Alpha = self.parent.attributes("-alpha")
+        if Alpha > 0:
+            Alpha = max(0, Alpha - Step)
+            self.parent.attributes("-alpha", Alpha)
+            self.after(20, self.FadeOut, Step)
         else:
             self.destroy()
-            # login = MainMenu(self.parent)
-            # login.grid(row=0, column=0, sticky="nsew")
-            # login.FadeIn()
 
-    def FadeIn(self, step=0.05):
-        alpha = self.parent.attributes("-alpha")
-        if alpha < 1:
-            alpha = min(1, alpha + step)
-            self.parent.attributes("-alpha", alpha)
-            self.after(20, self.FadeIn, step)
+    def FadeIn(self, Step=0.05):
+        Alpha = self.parent.attributes("-alpha")
+        if Alpha < 1:
+            Alpha = min(1, Alpha + Step)
+            self.parent.attributes("-alpha", Alpha)
+            self.after(20, self.FadeIn, Step)
 
-    def SlideOut(self, x=0):
-        if x <= 750:
-            self.place(x=-x, y=0)
+    def SlideOut(self, X=0):
+        if X <= 750:
+            self.place(x=-X, y=0)
             self.parent.update()
-            self.after(3, self.SlideOut, x + 15)
+            self.after(3, self.SlideOut, X + 15)
         else:
             self.destroy()
-            # login = LoginWindow(self.parent)
-            # login.place(x=750, y=0)
-            # login.SlideIn()
 
-    def SlideIn(self, x=750):
-        if x >= 0:
-            self.place(x=x, y=0)
+    def SlideIn(self, X=750):
+        if X >= 0:
+            self.place(x=X, y=0)
             self.parent.update()
-            self.after(3, self.SlideIn, x - 15)
+            self.after(3, self.SlideIn, X - 15)
 
-    # ========= Actions =========
-    def on_add_task(self):
-        # Lightweight add-task dialog using a transient frame
-        dialog = customtkinter.CTkToplevel(self)
-        dialog.title("Add Task")
-        dialog.geometry("360x220")
-        dialog.attributes("-topmost", True)
+    # ========= Action Handlers =========
+    def OnAddTask(self):
+        Dialog = customtkinter.CTkToplevel(self)
+        Dialog.title("Add New Task")
+        Dialog.geometry("400x280")
+        Dialog.attributes("-topmost", True)
+        Dialog.configure(fg_color=self.Colors["Light"])
 
-        title_entry = customtkinter.CTkEntry(
-            dialog, placeholder_text="Task title", width=300
+        TitleLabel = customtkinter.CTkLabel(
+            Dialog,
+            text="Task Title *",
+            text_color=self.Colors["TextDark"],
+            font=("Montserrat", 12, "bold"),
         )
-        title_entry.place(relx=0.5, rely=0.25, anchor="center")
+        TitleLabel.place(relx=0.5, rely=0.15, anchor="center")
 
-        desc_entry = customtkinter.CTkEntry(
-            dialog, placeholder_text="Description (optional)", width=300
+        TitleEntry = customtkinter.CTkEntry(
+            Dialog,
+            placeholder_text="Enter task title...",
+            width=320,
+            height=35,
+            fg_color="white",
+            text_color=self.Colors["TextDark"],
+            border_color=self.Colors["Primary"],
+            border_width=2,
+            corner_radius=8,
         )
-        desc_entry.place(relx=0.5, rely=0.45, anchor="center")
+        TitleEntry.place(relx=0.5, rely=0.28, anchor="center")
 
-        feedback = customtkinter.CTkLabel(dialog, text="", text_color="red")
-        feedback.place(relx=0.5, rely=0.65, anchor="center")
+        DescLabel = customtkinter.CTkLabel(
+            Dialog,
+            text="Description (Optional)",
+            text_color=self.Colors["TextDark"],
+            font=("Montserrat", 12, "bold"),
+        )
+        DescLabel.place(relx=0.5, rely=0.45, anchor="center")
 
-        def submit():
-            title = title_entry.get().strip()
-            description = desc_entry.get().strip() or None
-            if not title:
-                feedback.configure(text="Title is required")
+        DescEntry = customtkinter.CTkEntry(
+            Dialog,
+            placeholder_text="Add a description...",
+            width=320,
+            height=35,
+            fg_color="white",
+            text_color=self.Colors["TextDark"],
+            border_color=self.Colors["Primary"],
+            border_width=2,
+            corner_radius=8,
+        )
+        DescEntry.place(relx=0.5, rely=0.58, anchor="center")
+
+        Feedback = customtkinter.CTkLabel(
+            Dialog, text="", text_color="red", font=("Montserrat", 11)
+        )
+        Feedback.place(relx=0.5, rely=0.72, anchor="center")
+
+        def Submit():
+            Title = TitleEntry.get().strip()
+            Description = DescEntry.get().strip() or None
+            if not Title:
+                Feedback.configure(text="⚠️ Title is required", text_color="red")
                 return
             try:
-                self.task_manager.add_task(self.username, title, description)
-                # refresh overview and dropdown
-                self._refresh_overview()
-                self._refresh_dropdown()
-                dialog.destroy()
+                self.TaskManager.AddTask(self.username, Title, Description)
+                self._RefreshOverview()
+                self._RefreshDropdown()
+                Dialog.destroy()
             except Exception as e:
-                feedback.configure(text=str(e))
+                Feedback.configure(text=f"❌ Error: {str(e)}", text_color="red")
 
-        submit_btn = customtkinter.CTkButton(
-            dialog,
-            text="Add",
-            fg_color="#5EE2F1",
-            hover_color="#3CC1D4",
-            text_color="black",
+        SubmitBtn = customtkinter.CTkButton(
+            Dialog,
+            text="✓ Add Task",
+            fg_color=self.Colors["Secondary"],
+            hover_color=self.Colors["Success"],
+            text_color=self.Colors["Text"],
+            font=("Montserrat", 13, "bold"),
             width=140,
-            command=submit,
+            height=35,
+            corner_radius=8,
+            command=Submit,
         )
-        submit_btn.place(relx=0.5, rely=0.85, anchor="center")
+        SubmitBtn.place(relx=0.5, rely=0.88, anchor="center")
 
-    def on_open_task_manager(self):
+    def OnOpenTaskManager(self):
         # Placeholder: open full Task Manager window
         pass
 
-    def on_open_habits(self):
+    def OnOpenHabits(self):
         # Placeholder: open Habit Tracker window
         pass
 
-    def on_open_timer(self):
-        # Placeholder: open Task Timer UI
+    def OnOpenTimer(self):
+        # Placeholder: open Pomodoro/Focus Timer UI
         pass
 
-    def on_open_analytics(self):
-        # Placeholder: open Analytics UI
+    def OnOpenAnalytics(self):
+        # Placeholder: open Analytics dashboard
         pass
 
-    # ===== Helpers =====
-    def _refresh_overview(self):
-        total, completed, pending = self.task_manager.count_tasks(self.username)
-        self.overview_stats.configure(
-            text=f"Tasks: {completed}/{total} completed  •  Pending: {pending}"
+    def OnOpenNotes(self):
+        # Placeholder: open Quick Notes editor
+        pass
+
+    def OnOpenGoals(self):
+        # Placeholder: open Daily Goals manager
+        pass
+
+    def OnOpenCalendar(self):
+        # Placeholder: open Calendar view
+        pass
+
+    def OnOpenSettings(self):
+        # Placeholder: open Settings window
+        pass
+
+    # ========= Helper Methods =========
+    def _RefreshOverview(self):
+        Total, Completed, Pending = self.TaskManager.CountTasks(self.username)
+        CompletionRate = int((Completed / Total * 100) if Total > 0 else 0)
+        self.OverviewStats.configure(
+            text=f"✅ {Completed}/{Total} Completed  •  ⏳ {Pending} Pending  •  📈 {CompletionRate}%"
         )
 
-    def _refresh_dropdown(self):
-        titles = [title for _id, title in self.task_manager.get_tasks(self.username)]
-        if not titles:
-            titles = ["No tasks yet"]
-        self.tasks_dropdown.configure(values=titles)
+    def _RefreshDropdown(self):
+        Titles = [Title for _id, Title in self.TaskManager.GetTasks(self.username)]
+        if not Titles:
+            Titles = ["No tasks yet - click 'Add Task' to get started!"]
+        self.TasksDropdown.configure(values=Titles)
 
-    def _tick_clock(self):
+    def _TickClock(self):
         import datetime as _dt
 
-        now = _dt.datetime.now().strftime("%a %d %b, %H:%M:%S")
-        self.clock_label.configure(text=now)
-        self.after(1000, self._tick_clock)
+        Now = _dt.datetime.now().strftime("%a %d %b, %H:%M:%S")
+        self.ClockLabel.configure(text=Now)
+        self.after(1000, self._TickClock)
