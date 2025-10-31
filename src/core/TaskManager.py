@@ -55,3 +55,20 @@ class TaskManager:
             )
             rows = cursor.fetchall() or []
         return [(int(row[0]), str(row[1])) for row in rows]
+
+    def count_tasks(self, username: str) -> Tuple[int, int, int]:
+        """Return (total, completed, pending) counts for a user."""
+        with GetDBConnection(self.DBPath) as conn:
+            cursor = conn.cursor()
+            cursor.execute(
+                "SELECT COUNT(*) FROM tasks WHERE username = ?",
+                (username,),
+            )
+            total = int(cursor.fetchone()[0] or 0)
+            cursor.execute(
+                "SELECT COUNT(*) FROM tasks WHERE username = ? AND status = 'completed'",
+                (username,),
+            )
+            completed = int(cursor.fetchone()[0] or 0)
+            pending = max(0, total - completed)
+        return total, completed, pending
