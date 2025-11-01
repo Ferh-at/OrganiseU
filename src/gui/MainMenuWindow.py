@@ -1,6 +1,14 @@
 import customtkinter
 from PIL import Image
 from core.TaskManager import TaskManager
+from gui.TaskManagerWindow import TaskManagerWindow
+from gui.HabitTrackerWindow import HabitTrackerWindow
+from gui.FocusTimerWindow import FocusTimerWindow
+from gui.AnalyticsWindow import AnalyticsWindow
+from gui.QuickNotesWindow import QuickNotesWindow
+from gui.DailyGoalsWindow import DailyGoalsWindow
+from gui.CalendarWindow import CalendarWindow
+from gui.SettingsWindow import SettingsWindow
 
 
 class MainMenu(customtkinter.CTkFrame):
@@ -418,36 +426,28 @@ class MainMenu(customtkinter.CTkFrame):
         SubmitBtn.place(relx=0.5, rely=0.88, anchor="center")
 
     def OnOpenTaskManager(self):
-        # Placeholder: open full Task Manager window
-        pass
+        TaskManagerWindow(self, self.username)
 
     def OnOpenHabits(self):
-        # Placeholder: open Habit Tracker window
-        pass
+        HabitTrackerWindow(self, self.username)
 
     def OnOpenTimer(self):
-        # Placeholder: open Pomodoro/Focus Timer UI
-        pass
+        FocusTimerWindow(self, self.username)
 
     def OnOpenAnalytics(self):
-        # Placeholder: open Analytics dashboard
-        pass
+        AnalyticsWindow(self, self.username)
 
     def OnOpenNotes(self):
-        # Placeholder: open Quick Notes editor
-        pass
+        QuickNotesWindow(self, self.username)
 
     def OnOpenGoals(self):
-        # Placeholder: open Daily Goals manager
-        pass
+        DailyGoalsWindow(self, self.username)
 
     def OnOpenCalendar(self):
-        # Placeholder: open Calendar view
-        pass
+        CalendarWindow(self, self.username)
 
     def OnOpenSettings(self):
-        # Placeholder: open Settings window
-        pass
+        SettingsWindow(self, self.username)
 
     # ========= Helper Methods =========
     def _RefreshOverview(self):
