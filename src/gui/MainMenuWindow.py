@@ -123,7 +123,10 @@ class MainMenu(customtkinter.CTkFrame):
         self.OverviewStats.place(relx=0.5, rely=0.55, anchor="center")
 
         # Quick task dropdown
-        TaskTitles = [Title for _id, Title in self.TaskManager.GetTasks(self.username)]
+        TaskTitles = [
+            Title
+            for _id, Title, _status, _desc in self.TaskManager.GetTasks(self.username)
+        ]
         if not TaskTitles:
             TaskTitles = ["No tasks yet - click 'Add Task' to get started!"]
 
@@ -346,22 +349,28 @@ class MainMenu(customtkinter.CTkFrame):
     def OnAddTask(self):
         Dialog = customtkinter.CTkToplevel(self)
         Dialog.title("Add New Task")
-        Dialog.geometry("400x280")
+        Dialog.geometry("450x550")
         Dialog.attributes("-topmost", True)
         Dialog.configure(fg_color=self.Colors["Light"])
 
+        # Scrollable content
+        ContentFrame = customtkinter.CTkScrollableFrame(
+            Dialog, fg_color=self.Colors["Light"]
+        )
+        ContentFrame.pack(fill="both", expand=True, padx=20, pady=20)
+
         TitleLabel = customtkinter.CTkLabel(
-            Dialog,
+            ContentFrame,
             text="Task Title *",
             text_color=self.Colors["TextDark"],
             font=("Montserrat", 12, "bold"),
         )
-        TitleLabel.place(relx=0.5, rely=0.15, anchor="center")
+        TitleLabel.pack(pady=(5, 5))
 
         TitleEntry = customtkinter.CTkEntry(
-            Dialog,
+            ContentFrame,
             placeholder_text="Enter task title...",
-            width=320,
+            width=380,
             height=35,
             fg_color="white",
             text_color=self.Colors["TextDark"],
@@ -369,20 +378,20 @@ class MainMenu(customtkinter.CTkFrame):
             border_width=2,
             corner_radius=8,
         )
-        TitleEntry.place(relx=0.5, rely=0.28, anchor="center")
+        TitleEntry.pack(pady=5)
 
         DescLabel = customtkinter.CTkLabel(
-            Dialog,
+            ContentFrame,
             text="Description (Optional)",
             text_color=self.Colors["TextDark"],
             font=("Montserrat", 12, "bold"),
         )
-        DescLabel.place(relx=0.5, rely=0.45, anchor="center")
+        DescLabel.pack(pady=(10, 5))
 
         DescEntry = customtkinter.CTkEntry(
-            Dialog,
+            ContentFrame,
             placeholder_text="Add a description...",
-            width=320,
+            width=380,
             height=35,
             fg_color="white",
             text_color=self.Colors["TextDark"],
@@ -390,12 +399,73 @@ class MainMenu(customtkinter.CTkFrame):
             border_width=2,
             corner_radius=8,
         )
-        DescEntry.place(relx=0.5, rely=0.58, anchor="center")
+        DescEntry.pack(pady=5)
+
+        # Subtasks section
+        SubtasksLabel = customtkinter.CTkLabel(
+            ContentFrame,
+            text="Subtasks (Optional)",
+            text_color=self.Colors["TextDark"],
+            font=("Montserrat", 12, "bold"),
+        )
+        SubtasksLabel.pack(pady=(15, 5))
+
+        # Container for subtask entries
+        SubtaskEntries = []
+
+        SubtasksFrame = customtkinter.CTkFrame(
+            ContentFrame, fg_color="white", corner_radius=8
+        )
+        SubtasksFrame.pack(fill="x", pady=5)
+
+        def AddSubtaskEntry():
+            EntryFrame = customtkinter.CTkFrame(SubtasksFrame, fg_color="white")
+            EntryFrame.pack(fill="x", padx=10, pady=5)
+
+            SubtaskEntry = customtkinter.CTkEntry(
+                EntryFrame,
+                placeholder_text="Subtask title...",
+                width=320,
+                height=30,
+                fg_color=self.Colors["Light"],
+                text_color=self.Colors["TextDark"],
+                border_color=self.Colors["Secondary"],
+                border_width=1,
+            )
+            SubtaskEntry.pack(side="left", padx=5)
+            SubtaskEntries.append(SubtaskEntry)
+
+            RemoveBtn = customtkinter.CTkButton(
+                EntryFrame,
+                text="✕",
+                fg_color=self.Colors["Accent"],
+                hover_color="#D97706",
+                width=30,
+                height=30,
+                command=lambda: (
+                    EntryFrame.destroy(),
+                    SubtaskEntries.remove(SubtaskEntry),
+                ),
+            )
+            RemoveBtn.pack(side="left")
+
+        AddSubtaskBtn = customtkinter.CTkButton(
+            ContentFrame,
+            text="➕ Add Subtask",
+            fg_color=self.Colors["Secondary"],
+            hover_color=self.Colors["Success"],
+            text_color=self.Colors["Text"],
+            font=("Montserrat", 11, "bold"),
+            width=150,
+            height=30,
+            command=AddSubtaskEntry,
+        )
+        AddSubtaskBtn.pack(pady=10)
 
         Feedback = customtkinter.CTkLabel(
-            Dialog, text="", text_color="red", font=("Montserrat", 11)
+            ContentFrame, text="", text_color="red", font=("Montserrat", 11)
         )
-        Feedback.place(relx=0.5, rely=0.72, anchor="center")
+        Feedback.pack(pady=10)
 
         def Submit():
             Title = TitleEntry.get().strip()
@@ -403,16 +473,26 @@ class MainMenu(customtkinter.CTkFrame):
             if not Title:
                 Feedback.configure(text="⚠️ Title is required", text_color="red")
                 return
+
+            # Collect subtasks
+            Subtasks = [
+                entry.get().strip() for entry in SubtaskEntries if entry.get().strip()
+            ]
+
             try:
-                self.TaskManager.AddTask(self.username, Title, Description)
+                self.TaskManager.AddTask(self.username, Title, Description, Subtasks)
                 self._RefreshOverview()
                 self._RefreshDropdown()
                 Dialog.destroy()
             except Exception as e:
                 Feedback.configure(text=f"❌ Error: {str(e)}", text_color="red")
 
+        # Bottom buttons frame
+        ButtonFrame = customtkinter.CTkFrame(Dialog, fg_color=self.Colors["Light"])
+        ButtonFrame.pack(fill="x", pady=(0, 20))
+
         SubmitBtn = customtkinter.CTkButton(
-            Dialog,
+            ButtonFrame,
             text="✓ Add Task",
             fg_color=self.Colors["Secondary"],
             hover_color=self.Colors["Success"],
@@ -423,7 +503,7 @@ class MainMenu(customtkinter.CTkFrame):
             corner_radius=8,
             command=Submit,
         )
-        SubmitBtn.place(relx=0.5, rely=0.88, anchor="center")
+        SubmitBtn.pack(pady=10)
 
     def OnOpenTaskManager(self):
         TaskManagerWindow(self, self.username)
@@ -458,7 +538,10 @@ class MainMenu(customtkinter.CTkFrame):
         )
 
     def _RefreshDropdown(self):
-        Titles = [Title for _id, Title in self.TaskManager.GetTasks(self.username)]
+        Titles = [
+            Title
+            for _id, Title, _status, _desc in self.TaskManager.GetTasks(self.username)
+        ]
         if not Titles:
             Titles = ["No tasks yet - click 'Add Task' to get started!"]
         self.TasksDropdown.configure(values=Titles)
