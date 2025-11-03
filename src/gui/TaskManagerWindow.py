@@ -1,5 +1,6 @@
 import customtkinter
 from core.TaskManager import TaskManager
+from gui.AddTaskWindow import AddTaskWindow
 
 
 class TaskManagerWindow(customtkinter.CTkToplevel):
@@ -93,12 +94,10 @@ class TaskManagerWindow(customtkinter.CTkToplevel):
         CloseBtn.pack(side="right", padx=5)
 
     def _LoadTasks(self):
-        # Clear existing tasks
-        for widget in self.TaskListFrame.winfo_children():
+        for widget in self.TaskListFrame.winfo_children(): #clearing all current tasks
             widget.destroy()
 
-        # Load tasks from database
-        Tasks = self.TaskManager.GetTasks(self.username)
+        Tasks = self.TaskManager.GetTasks(self.username) # retrieving all CURRENT tasks for the user
 
         if not Tasks:
             NoTasksLabel = customtkinter.CTkLabel(
@@ -108,9 +107,8 @@ class TaskManagerWindow(customtkinter.CTkToplevel):
                 font=("Montserrat", 14),
             )
             NoTasksLabel.pack(pady=50)
-            return
+            return #important to return here as otherwise the code will continue to run and create more tasks which don't exist
 
-        # Display each task with subtasks
         for TaskID, TaskTitle, TaskStatus, TaskDesc in Tasks:
             self._CreateTaskCard(TaskID, TaskTitle, TaskStatus, TaskDesc)
 
@@ -182,7 +180,6 @@ class TaskManagerWindow(customtkinter.CTkToplevel):
             )
             DescLabel.pack(anchor="w", padx=15, pady=(0, 5))
 
-        # Subtasks section
         if Subtasks:
             SubtasksFrame = customtkinter.CTkFrame(
                 TaskCard, fg_color=self.Colors["Dark"], corner_radius=8
@@ -227,148 +224,9 @@ class TaskManagerWindow(customtkinter.CTkToplevel):
             CompleteBtn.pack(side="right", padx=5)
 
     def _AddTask(self):
-        Dialog = customtkinter.CTkToplevel(self)
-        Dialog.title("Add New Task")
-        Dialog.geometry("450x550")
-        Dialog.attributes("-topmost", True)
-        Dialog.configure(fg_color=self.Colors["Light"])
-
-        # Scrollable content
-        ContentFrame = customtkinter.CTkScrollableFrame(
-            Dialog, fg_color=self.Colors["Light"]
-        )
-        ContentFrame.pack(fill="both", expand=True, padx=20, pady=20)
-
-        TitleLabel = customtkinter.CTkLabel(
-            ContentFrame,
-            text="Task Title *",
-            text_color=self.Colors["TextDark"],
-            font=("Montserrat", 12, "bold"),
-        )
-        TitleLabel.pack(pady=(5, 5))
-
-        TitleEntry = customtkinter.CTkEntry(
-            ContentFrame, placeholder_text="Enter task title...", width=380, height=35
-        )
-        TitleEntry.pack(pady=5)
-
-        DescLabel = customtkinter.CTkLabel(
-            ContentFrame,
-            text="Description (Optional)",
-            text_color=self.Colors["TextDark"],
-            font=("Montserrat", 12, "bold"),
-        )
-        DescLabel.pack(pady=(10, 5))
-
-        DescEntry = customtkinter.CTkEntry(
-            ContentFrame, placeholder_text="Add a description...", width=380, height=35
-        )
-        DescEntry.pack(pady=5)
-
-        # Subtasks section
-        SubtasksLabel = customtkinter.CTkLabel(
-            ContentFrame,
-            text="Subtasks (Optional)",
-            text_color=self.Colors["TextDark"],
-            font=("Montserrat", 12, "bold"),
-        )
-        SubtasksLabel.pack(pady=(15, 5))
-
-        # Container for subtask entries
-        SubtaskEntries = []
-
-        SubtasksFrame = customtkinter.CTkFrame(
-            ContentFrame, fg_color="white", corner_radius=8
-        )
-        SubtasksFrame.pack(fill="x", pady=5)
-
-        def AddSubtaskEntry():
-            EntryFrame = customtkinter.CTkFrame(SubtasksFrame, fg_color="white")
-            EntryFrame.pack(fill="x", padx=10, pady=5)
-
-            SubtaskEntry = customtkinter.CTkEntry(
-                EntryFrame,
-                placeholder_text="Subtask title...",
-                width=320,
-                height=30,
-                fg_color=self.Colors["Light"],
-                text_color=self.Colors["TextDark"],
-                border_color=self.Colors["Secondary"],
-                border_width=1,
-            )
-            SubtaskEntry.pack(side="left", padx=5)
-            SubtaskEntries.append(SubtaskEntry)
-
-            RemoveBtn = customtkinter.CTkButton(
-                EntryFrame,
-                text="✕",
-                fg_color=self.Colors["Accent"],
-                hover_color="#D97706",
-                width=30,
-                height=30,
-                command=lambda: (
-                    EntryFrame.destroy(),
-                    SubtaskEntries.remove(SubtaskEntry),
-                ),
-            )
-            RemoveBtn.pack(side="left")
-
-        AddSubtaskBtn = customtkinter.CTkButton(
-            ContentFrame,
-            text="➕ Add Subtask",
-            fg_color=self.Colors["Secondary"],
-            hover_color=self.Colors["Success"],
-            text_color=self.Colors["Text"],
-            font=("Montserrat", 11, "bold"),
-            width=150,
-            height=30,
-            command=AddSubtaskEntry,
-        )
-        AddSubtaskBtn.pack(pady=10)
-
-        Feedback = customtkinter.CTkLabel(
-            ContentFrame, text="", text_color="red", font=("Montserrat", 11)
-        )
-        Feedback.pack(pady=10)
-
-        def Submit():
-            Title = TitleEntry.get().strip()
-            Description = DescEntry.get().strip() or None
-            if not Title:
-                Feedback.configure(text="⚠️ Title is required", text_color="red")
-                return
-
-            # Collect subtasks
-            Subtasks = [
-                entry.get().strip() for entry in SubtaskEntries if entry.get().strip()
-            ]
-
-            try:
-                self.TaskManager.AddTask(self.username, Title, Description, Subtasks)
-                self._LoadTasks()
-                Dialog.destroy()
-            except Exception as e:
-                Feedback.configure(text=f"❌ Error: {str(e)}", text_color="red")
-
-        # Bottom buttons frame
-        ButtonFrame = customtkinter.CTkFrame(Dialog, fg_color=self.Colors["Light"])
-        ButtonFrame.pack(fill="x", pady=(0, 20))
-
-        SubmitBtn = customtkinter.CTkButton(
-            ButtonFrame,
-            text="✓ Add Task",
-            fg_color=self.Colors["Secondary"],
-            hover_color=self.Colors["Success"],
-            text_color=self.Colors["Text"],
-            font=("Montserrat", 13, "bold"),
-            width=140,
-            height=35,
-            command=Submit,
-        )
-        SubmitBtn.pack(pady=10)
+        AddTaskWindow(self, self.username, self.TaskManager, self._LoadTasks)
 
     def _DeleteTask(self, TaskID):
-        # Confirm deletion
         ConfirmDialog = customtkinter.CTkToplevel(self)
         ConfirmDialog.title("Confirm Delete")
         ConfirmDialog.geometry("350x150")

@@ -143,22 +143,19 @@ class TaskManager:
 
             TaskID = Result[0]
 
-            # Mark subtask as complete
             Cursor.execute(
                 "UPDATE subtasks SET status = 'completed' WHERE id = ?", (SubtaskID,)
             )
 
-            # Check if all subtasks are complete
             Cursor.execute(
                 "SELECT COUNT(*) FROM subtasks WHERE task_id = ? AND status = 'pending'",
                 (TaskID,),
             )
             PendingCount = Cursor.fetchone()[0]
 
-            # If no pending subtasks, mark parent task as complete
             if PendingCount == 0:
                 Cursor.execute(
-                    "UPDATE tasks SET status = 'completed' WHERE id = ?", (TaskID,)
+                    "UPDATE tasks SET status = 'completed' WHERE id = ?", (TaskID)
                 )
 
             Conn.commit()
@@ -169,12 +166,10 @@ class TaskManager:
         with GetDBConnection(self.DBPath) as Conn:
             Cursor = Conn.cursor()
 
-            # Mark task as complete
             Cursor.execute(
                 "UPDATE tasks SET status = 'completed' WHERE id = ?", (TaskID,)
             )
 
-            # Mark all subtasks as complete
             Cursor.execute(
                 "UPDATE subtasks SET status = 'completed' WHERE task_id = ?", (TaskID,)
             )
@@ -187,17 +182,14 @@ class TaskManager:
         with GetDBConnection(self.DBPath) as Conn:
             Cursor = Conn.cursor()
 
-            # Delete subtasks first
             Cursor.execute("DELETE FROM subtasks WHERE task_id = ?", (TaskID,))
 
-            # Delete task
             Cursor.execute("DELETE FROM tasks WHERE id = ?", (TaskID,))
 
             Conn.commit()
             return True
 
     def AddSubtask(self, TaskID, SubtaskTitle):
-        # * Add a single subtask to an existing task
         with GetDBConnection(self.DBPath) as Conn:
             Cursor = Conn.cursor()
             Cursor.execute(
@@ -206,3 +198,6 @@ class TaskManager:
             )
             Conn.commit()
             return int(Cursor.lastrowid)
+
+
+

@@ -35,7 +35,6 @@ def InitialiseApp():
     icon_path = os.path.join(base_dir, "assets", "QubeLogo.ico")
     app.iconbitmap(icon_path)
     
-    
     app.mainloop()
 
 
