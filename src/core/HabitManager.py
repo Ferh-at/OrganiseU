@@ -51,39 +51,17 @@ class HabitManager:
 
             Conn.commit()
 
-    def AddHabit(
-        self,
-        username,
-        habit_name,
-        is_positive,
-        goal_type,
-        baseline_count,
-        target_count,
-        target_date,
-    ):
-        """Add a new habit for a user"""
+    def AddHabit(self, username, habit_name, is_positive, goal_type, baseline_count, target_count, target_date):
         with GetDBConnection(self.DBPath) as Conn:
             Cursor = Conn.cursor()
             Cursor.execute(
                 """
-                INSERT INTO habits (username, habit_name, is_positive, goal_type, 
-                                   baseline_count, target_count, target_date)
+                INSERT INTO habits (username, habit_name, is_positive, goal_type, baseline_count, target_count, target_date)
                 VALUES (?, ?, ?, ?, ?, ?, ?)
             """,
-                (
-                    username,
-                    habit_name,
-                    is_positive,
-                    goal_type,
-                    baseline_count,
-                    target_count,
-                    target_date,
-                ),
-            )
-
+                (username, habit_name, is_positive, goal_type, baseline_count, target_count, target_date))
             habit_id = Cursor.lastrowid
 
-            # Create initial tracking entry for today
             today = datetime.date.today().isoformat()
             Cursor.execute(
                 """
@@ -97,7 +75,6 @@ class HabitManager:
             return habit_id
 
     def GetUserHabits(self, username):
-        """Get all habits for a user"""
         with GetDBConnection(self.DBPath) as Conn:
             Cursor = Conn.cursor()
             Cursor.execute(
@@ -146,13 +123,11 @@ class HabitManager:
             return None
 
     def IncrementHabit(self, habit_id):
-        """Increment the count for today's habit by 1"""
         today = datetime.date.today().isoformat()
 
         with GetDBConnection(self.DBPath) as Conn:
             Cursor = Conn.cursor()
 
-            # Check if entry exists
             Cursor.execute(
                 """
                 SELECT count FROM habit_tracking
@@ -163,7 +138,6 @@ class HabitManager:
 
             row = Cursor.fetchone()
             if row:
-                # Update existing entry
                 Cursor.execute(
                     """
                     UPDATE habit_tracking
@@ -173,7 +147,7 @@ class HabitManager:
                     (habit_id, today),
                 )
             else:
-                # Create new entry if doesn't exist (shouldn't happen but safety)
+                #safety measure in case the row doesn't exist
                 Cursor.execute(
                     """
                     INSERT INTO habit_tracking (habit_id, date, count, suggested_target)
@@ -185,7 +159,6 @@ class HabitManager:
             Conn.commit()
 
     def DeleteHabit(self, habit_id):
-        """Delete a habit and all its tracking data"""
         with GetDBConnection(self.DBPath) as Conn:
             Cursor = Conn.cursor()
             Cursor.execute("DELETE FROM habits WHERE id = ?", (habit_id,))
@@ -200,22 +173,19 @@ class HabitManager:
                 SELECT concentration, discipline, motivation, energy
                 FROM users
                 WHERE username = ?
-            """,
-                (username,),
-            )
+            """, (username))
 
             row = Cursor.fetchone()
             if row:
                 return {
-                    "concentration": row[0] or 5,
-                    "discipline": row[1] or 5,
-                    "motivation": row[2] or 5,
-                    "energy": row[3] or 5,
+                    "concentration": row[0],
+                    "discipline": row[1],
+                    "motivation": row[2],
+                    "energy": row[3],
                 }
             return {"concentration": 5, "discipline": 5, "motivation": 5, "energy": 5}
 
     def CalculatePreview(self, baseline, target, target_date, discipline):
-        """Calculate preview of average daily change needed"""
         try:
             if isinstance(target_date, str):
                 target_date_obj = datetime.datetime.strptime(
@@ -253,7 +223,6 @@ class HabitManager:
             return f"Error: {str(e)}"
 
     def CheckAndGenerateDailyGoals(self, username):
-        """Generate daily goals for all user habits if not already generated for today"""
         today = datetime.date.today().isoformat()
         habits = self.GetUserHabits(username)
         stats = self._GetUserStats(username)
@@ -264,8 +233,6 @@ class HabitManager:
 
             for habit in habits:
                 habit_id = habit["id"]
-
-                # Check if tracking entry exists for today
                 Cursor.execute(
                     """
                     SELECT count, suggested_target FROM habit_tracking
@@ -279,10 +246,9 @@ class HabitManager:
                     # Entry exists, skip
                     continue
 
-                # Need to generate goal for today
                 new_target = self._CalculateNewTarget(habit, discipline, Cursor)
 
-                # Insert new tracking entry
+
                 Cursor.execute(
                     """
                     INSERT INTO habit_tracking (habit_id, date, count, suggested_target)
@@ -294,16 +260,14 @@ class HabitManager:
             Conn.commit()
 
     def _CalculateNewTarget(self, habit, discipline, cursor):
-        """Calculate the new suggested target based on the adaptive algorithm"""
+
         today = datetime.date.today()
         habit_id = habit["id"]
         goal_type = habit["goal_type"]
         target_count = habit["target_count"]
-        target_date = datetime.datetime.strptime(
-            habit["target_date"], "%Y-%m-%d"
-        ).date()
+        target_date = datetime.datetime.strptime(habit["target_date"], "%Y-%m-%d").date()
 
-        # Get yesterday's data
+        # retrieving yesterday's data
         yesterday = (today - datetime.timedelta(days=1)).isoformat()
         cursor.execute(
             """
@@ -335,26 +299,23 @@ class HabitManager:
         else:  # increase
             points_remaining = target_count - current_target
 
-        base_daily_change = (
-            points_remaining / days_remaining if days_remaining > 0 else 0
-        )
+        base_daily_change = points_remaining / (days_remaining if days_remaining > 0 else 0)
 
-        # 2. Check user performance (if we have yesterday's data)
+        # 2. Check user performance
         performance_multiplier = 1.0
         if yesterday_count is not None and yesterday_row[1] > 0:
             yesterday_target = yesterday_row[1]
 
             if goal_type == "decrease":
-                # For decrease, lower is better
-                if yesterday_count <= yesterday_target * 0.8:  # Beat by 20%
+                if yesterday_count <= yesterday_target * 0.8:
                     performance_multiplier = 1.4
                 elif yesterday_count <= yesterday_target:
                     performance_multiplier = 1.0
                 else:
                     performance_multiplier = 0.75
-            else:  # increase
-                # For increase, higher is better
-                if yesterday_count >= yesterday_target * 1.2:  # Beat by 20%
+            else: 
+
+                if yesterday_count >= yesterday_target * 1.2:
                     performance_multiplier = 1.4
                 elif yesterday_count >= yesterday_target:
                     performance_multiplier = 1.0
@@ -373,9 +334,9 @@ class HabitManager:
 
         if goal_type == "decrease":
             new_target = current_target - daily_change
-            new_target = max(new_target, target_count)  # Don't go below target
-        else:  # increase
+            new_target = max(new_target, target_count)
+        else:
             new_target = current_target + daily_change
-            new_target = min(new_target, target_count)  # Don't go above target
+            new_target = min(new_target, target_count)
 
         return int(round(new_target))
