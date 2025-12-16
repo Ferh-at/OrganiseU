@@ -12,8 +12,8 @@ notification = Notification(
     title="Welcome to OrganiseU!",
     msg="Hope you enjoy your time here!",
     duration="short",
-    icon=icon_path
-)
+    icon=icon_path)
+
 notification.show()
 
 

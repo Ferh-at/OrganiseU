@@ -51,7 +51,16 @@ class HabitManager:
 
             Conn.commit()
 
-    def AddHabit(self, username, habit_name, is_positive, goal_type, baseline_count, target_count, target_date):
+    def AddHabit(
+        self,
+        username,
+        habit_name,
+        is_positive,
+        goal_type,
+        baseline_count,
+        target_count,
+        target_date,
+    ):
         with GetDBConnection(self.DBPath) as Conn:
             Cursor = Conn.cursor()
             Cursor.execute(
@@ -59,7 +68,16 @@ class HabitManager:
                 INSERT INTO habits (username, habit_name, is_positive, goal_type, baseline_count, target_count, target_date)
                 VALUES (?, ?, ?, ?, ?, ?, ?)
             """,
-                (username, habit_name, is_positive, goal_type, baseline_count, target_count, target_date))
+                (
+                    username,
+                    habit_name,
+                    is_positive,
+                    goal_type,
+                    baseline_count,
+                    target_count,
+                    target_date,
+                ),
+            )
             habit_id = Cursor.lastrowid
 
             today = datetime.date.today().isoformat()
@@ -147,7 +165,7 @@ class HabitManager:
                     (habit_id, today),
                 )
             else:
-                #safety measure in case the row doesn't exist
+                # safety measure in case the row doesn't exist
                 Cursor.execute(
                     """
                     INSERT INTO habit_tracking (habit_id, date, count, suggested_target)
@@ -172,8 +190,9 @@ class HabitManager:
                 """
                 SELECT concentration, discipline, motivation, energy
                 FROM users
-                WHERE username = ?
-            """, (username))
+                WHERE username = ? 
+                """,(username,),
+            )
 
             row = Cursor.fetchone()
             if row:
@@ -248,7 +267,6 @@ class HabitManager:
 
                 new_target = self._CalculateNewTarget(habit, discipline, Cursor)
 
-
                 Cursor.execute(
                     """
                     INSERT INTO habit_tracking (habit_id, date, count, suggested_target)
@@ -260,12 +278,13 @@ class HabitManager:
             Conn.commit()
 
     def _CalculateNewTarget(self, habit, discipline, cursor):
-
         today = datetime.date.today()
         habit_id = habit["id"]
         goal_type = habit["goal_type"]
         target_count = habit["target_count"]
-        target_date = datetime.datetime.strptime(habit["target_date"], "%Y-%m-%d").date()
+        target_date = datetime.datetime.strptime(
+            habit["target_date"], "%Y-%m-%d"
+        ).date()
 
         # retrieving yesterday's data
         yesterday = (today - datetime.timedelta(days=1)).isoformat()
@@ -299,7 +318,9 @@ class HabitManager:
         else:  # increase
             points_remaining = target_count - current_target
 
-        base_daily_change = points_remaining / (days_remaining if days_remaining > 0 else 0)
+        base_daily_change = points_remaining / (
+            days_remaining if days_remaining > 0 else 0
+        )
 
         # 2. Check user performance
         performance_multiplier = 1.0
@@ -313,8 +334,7 @@ class HabitManager:
                     performance_multiplier = 1.0
                 else:
                     performance_multiplier = 0.75
-            else: 
-
+            else:
                 if yesterday_count >= yesterday_target * 1.2:
                     performance_multiplier = 1.4
                 elif yesterday_count >= yesterday_target:
